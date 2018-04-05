@@ -44,14 +44,17 @@ In this section, provide the details for a benchmark model or result that relate
 
 The evaluation metrics used to quantify the performance of my solution model are provided by the authors of the Kaggle competition.
 
-The interpolated average precision (AP) is used as the metric for object segmentation. The mean AP (mAP) is computed for all the video clips and all the classes at different intersection-over-union (IoU) thresholds. The IoU between a predicted instance A and a ground truth instance B is computed by *IoU(A,B)=A∩B/A∪B*.
+The interpolated average precision (AP) is used as the metric for object segmentation. The mean AP (mAP) is computed for all the video clips and all the classes at different intersection-over-union (IoU) thresholds. The IoU between a predicted instance A and a ground truth instance B is computed by $IoU(A,B) = \frac{A \bigcap B}{A \bigcup B}$.
 
 To obtain the Precision-Recall curve, the authors choose ten IoU thresholds in range [0.5, 1.0) with step 0.05. They match ground truth instances with predicted instances at different IoU thresholds. For example, given an IoU threshold 0.5, a predicted instance is considered as “matched” if the IoU with a ground truth instance is greater than 0.5. If there are multiple predicted instances matched to a ground truth instance, the predicted instance with the largest IoU is considered as the true positive, and remaining predicted instances are false positives. The predicted instances that are not matched with any ground truth instances are counted as false positives. If IoU between a predicted instance and ignoring labels is larger than the IoU threshold, this predicted instance is removed from the evaluation. Notice that the group classes, such as car group and bicycle group, are also ignored in the evaluation.
 
 ### Project Design
-_(approx. 1 page)_
 
-In this final section, summarize a theoretical workflow for approaching a solution given the problem. Provide thorough discussion for what strategies you may consider employing, what analysis of the data might be required before being used, or which algorithms will be considered for your implementation. The workflow and discussion that you provide should align with the qualities of the previous sections. Additionally, you are encouraged to include small visualizations, pseudocode, or diagrams to aid in describing the project design, but it is not required. The discussion should clearly outline your intended workflow of the capstone project.
+Before doing any modelling, I will dive into the dataset to get a basic summary and visualize it. Number of training examples vs. testing examples, images shape, class definitions and distributions, are key characteristics that I will explore. Also, displaying some original images and associated ground-truth label images will help me have a good understanding of the dataset.
+
+After playing with the data, I will start by implementing one or more state-of-the-art network architectures such as the well-known [U-Net][8], [SegNet][9]/[Squeeze-SegNet][10], [PANet][11], and [LinkNet][12]. I will also have a look to the [Carvana Image Masking Kaggle Challenge][13] winners approach and architecture, called [TernausNet][14]. They have win a Kaggle challenge on similar computer vision task. This could be very helpul at solving the semantic segmentation problem I'm facing. In terms of software, I'll use [Keras][15] or [Tensorflow][16] as a deep learning framework and [OpenCV][17] for image processing.
+
+Moreover, like almost all computer vision task solved with deep learning I'll use data augmentation such as horizontal flips, shifts, rotations, and color transformations. I plan to use the [imgaug][18] python library to do so.
 
 -----------
 
@@ -64,15 +67,20 @@ In this final section, summarize a theoretical workflow for approaching a soluti
 - Are all the resources used for this project correctly cited and referenced?
 
 [1]:https://www.nytimes.com/2018/03/19/technology/uber-driverless-fatality.html
-
 [2]:https://www.udacity.com/course/machine-learning-engineer-nanodegree--nd009t
-
 [3]:https://www.udacity.com/course/self-driving-car-engineer-nanodegree--nd013
-
 [4]:https://www.kaggle.com/c/cvpr-2018-autonomous-driving/data
-
 [5]:http://www.cvlibs.net/datasets/kitti/
-
 [6]:https://arxiv.org/abs/1803.06184
-
 [7]:http://apolloscape.auto/scene.html
+[8]:https://arxiv.org/abs/1505.04597
+[9]:https://arxiv.org/pdf/1511.00561.pdf
+[10]:https://arxiv.org/abs/1711.05491
+[11]:https://arxiv.org/pdf/1803.01534.pdf
+[12]:https://arxiv.org/abs/1707.03718
+[13]:http://blog.kaggle.com/2017/12/22/carvana-image-masking-first-place-interview/
+[14]:https://arxiv.org/abs/1801.05746
+[15]:https://keras.io/
+[16]:https://www.tensorflow.org/
+[17]:https://docs.opencv.org/3.4.1/index.html
+[18]:https://github.com/aleju/imgaug
