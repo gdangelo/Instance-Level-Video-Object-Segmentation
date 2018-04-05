@@ -25,8 +25,11 @@ In this challenge, I'll have a set of video sequences with fine per-pixel labeli
 
 ### Datasets and Inputs
 
-The ApolloScape dataset provided by Baidu, Inc. contains survey grade dense 3D points and registered multi-view RGB images at video rate, and every pixel and every 3D point are semantically labelled. In addition precise pose for each image is provided.
-The subset used for this challenge has around 60K image frames and corresponding instance-level annotations.
+To solve the scene parsing problem, I'll use the [ApolloScape][6] [dataset][7] provided by Baidu, Inc. It contains survey grade dense 3D points and registered multi-view RGB images at video rate, and every pixel and every 3D point are semantically labelled. In addition precise pose for each image is provided. The subset used for this challenge has around 60K image frames and corresponding instance-level annotations. For details about the class definitions and dataset structure please refer to [ApolloScape website][7].
+
+The authors equipped a mid-size SUV with high resolution cameras and a Riegl acquisition system. The dataset is collected in different cities under various traffic conditions. The number of moving objects, such as vehicles and pedestrians, averages from tens to over one hundred. Image frames in the dataset are collected every one meter by the acquisition system with resolution 3384 x 2710.
+
+The dataset is divided into three subsets for original training images, training images labels and test sets iamges respectively.
 
 ### Solution Statement
 
@@ -64,3 +67,7 @@ In this final section, summarize a theoretical workflow for approaching a soluti
 [4]:https://www.kaggle.com/c/cvpr-2018-autonomous-driving/data
 
 [5]:http://www.cvlibs.net/datasets/kitti/
+
+[6]:https://arxiv.org/abs/1803.06184
+
+[7]:http://apolloscape.auto/scene.html
