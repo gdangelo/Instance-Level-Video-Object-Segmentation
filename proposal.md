@@ -54,17 +54,11 @@ Before doing any modelling, I will dive into the dataset to get a basic summary 
 
 After playing with the data, I will start by implementing one or more state-of-the-art network architectures such as the well-known [U-Net][8], [SegNet][9]/[Squeeze-SegNet][10], [PANet][11], and [LinkNet][12]. I will also have a look to the [Carvana Image Masking Kaggle Challenge][13] winners approach and architecture, called [TernausNet][14]. They have win a Kaggle challenge on similar computer vision task. This could be very helpul at solving the semantic segmentation problem I'm facing. In terms of software, I'll use [Keras][15] or [Tensorflow][16] as a deep learning framework and [OpenCV][17] for image processing.
 
+At this point, I'll train some of these architectures using pre-trained weights to speed up the training phase and improve performance of semantic segmentation. The goal of training multiple models is to benchmark them and eventually average/combine their results. Then, I will move on to the next step which is testing the model on completely new data it has never seen before. For this competition, it means submitting my solution on the evaluation server on Kaggle.
+
 Moreover, like almost all computer vision task solved with deep learning I'll use data augmentation such as horizontal flips, shifts, rotations, and color transformations. I plan to use the [imgaug][18] python library to do so.
 
------------
-
-**Before submitting your proposal, ask yourself. . .**
-
-- Does the proposal you have written follow a well-organized structure similar to that of the project template?
-- Is each section (particularly **Solution Statement** and **Project Design**) written in a clear, concise and specific fashion? Are there any ambiguous terms or phrases that need clarification?
-- Would the intended audience of your project be able to understand your proposal?
-- Have you properly proofread your proposal to assure there are minimal grammatical and spelling mistakes?
-- Are all the resources used for this project correctly cited and referenced?
+At every iteration of my project workflow (e.g. after every submission), I'll finetune my model in order to enhance its performance. One important thing I plan to do is to understand the limitations of my model by performing a visual inspection of the predictions. For the train set, I'll review cases with the lowest performance scores and try to tune the model accordingly.
 
 [1]:https://www.nytimes.com/2018/03/19/technology/uber-driverless-fatality.html
 [2]:https://www.udacity.com/course/machine-learning-engineer-nanodegree--nd009t
