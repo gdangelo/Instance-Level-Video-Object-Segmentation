@@ -17,11 +17,11 @@ Sensing the surrounding environment is very important for an autonomous vehicle 
 
 In this challenge, I'll have a set of video sequences with fine per-pixel labeling, in particular instances of moving/movable objects such as vehicles and pedestrians are also labeled. The goal is to evaluate the state of the art in video-based object segmentation, a task that has not been evaluated previously due to the lack of fine labeling. The average moving/movable instances per frame can be over 50, in comparisons, only up to 15 cars/pedestrians are labelled in the [KITTI dataset][5]. Some very challenging environments, such as harsh traffic and lighting conditions, have been captured as shown in the following images (center-cropped for visualization purpose).
 
-![Challenging condition](./examples/1.png)
+![Challenging lighting condition](./examples/1.png)
 
-![Challenging condition](./examples/2.png)
+![Reflection on bus windows](./examples/2.png)
 
-![Challenging condition](./examples/3.png)
+![Harsh Traffic](./examples/3.png)
 
 ### Datasets and Inputs
 
@@ -29,13 +29,9 @@ To solve the scene parsing problem, I'll use the [ApolloScape][6] [dataset][7] p
 
 The authors equipped a mid-size SUV with high resolution cameras and a Riegl acquisition system. The dataset is collected in different cities under various traffic conditions. The number of moving objects, such as vehicles and pedestrians, averages from tens to over one hundred. Image frames in the dataset are collected every one meter by the acquisition system with resolution 3384 x 2710.
 
-The dataset is divided into three subsets for original training images, training images labels and test sets images respectively. See below some examples of labelled images of the training set.
+The dataset is divided into three subsets for original training images, training images labels and test sets images respectively. See below an example of a labelled image of the training set (cropped for visualization purpose).
 
-![Labelled image](./examples/label_1.png)
-
-![Labelled image](./examples/label_2.png)
-
-![Labelled image](./examples/label_3.png)
+![Dense traffic environment](./examples/label_1.png)
 
 ### Solution Statement
 
