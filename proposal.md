@@ -36,9 +36,8 @@ The dataset is divided into three subsets for original training images, training
 Recent developments in neural networks architectures and techniques have greatly advanced the performance of computer vision tasks. New applications have become possible thanks to these scientists progress, in particular in the field of self-driving cars. Hence, I'll focus on using end-to-end models, and taking advantage of transfer learning, for solving scene parsing. Specifically, I plan to review state-of-the-art architectures and techniques for semantic segmentation with deep learning.
 
 ### Benchmark Model
-_(approximately 1-2 paragraphs)_
 
-In this section, provide the details for a benchmark model or result that relates to the domain, problem statement, and intended solution. Ideally, the benchmark model or result contextualizes existing methods or known information in the domain and problem given, which could then be objectively compared to the solution. Describe how the benchmark model or result is measurable (can be measured by some metric and clearly observed) with thorough detail.
+I plan to compare the results of my final solution to the results obtained with a basic Convolutional Neural Network (CNN) that I will design with few layers. I will compare the performance to each other, and also visually compare the output segmentation on the training set. A well-designed solution using state-of-the-art architectures on segmentation task should be able to beat a basic CNN model.
 
 ### Evaluation Metrics
 
