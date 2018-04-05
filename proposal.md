@@ -29,7 +29,13 @@ To solve the scene parsing problem, I'll use the [ApolloScape][6] [dataset][7] p
 
 The authors equipped a mid-size SUV with high resolution cameras and a Riegl acquisition system. The dataset is collected in different cities under various traffic conditions. The number of moving objects, such as vehicles and pedestrians, averages from tens to over one hundred. Image frames in the dataset are collected every one meter by the acquisition system with resolution 3384 x 2710.
 
-The dataset is divided into three subsets for original training images, training images labels and test sets images respectively.
+The dataset is divided into three subsets for original training images, training images labels and test sets images respectively. See below some examples of labelled images of the training set.
+
+![Labelled image](./examples/label_1.png)
+
+![Labelled image](./examples/label_2.png)
+
+![Labelled image](./examples/label_3.png)
 
 ### Solution Statement
 
