@@ -29,9 +29,11 @@ To solve the scene parsing problem, I'll use the [ApolloScape][6] [dataset][7] p
 
 The authors equipped a mid-size SUV with high resolution cameras and a Riegl acquisition system. The dataset is collected in different cities under various traffic conditions. The number of moving objects, such as vehicles and pedestrians, averages from tens to over one hundred. Image frames in the dataset are collected every one meter by the acquisition system with resolution 3384 x 2710.
 
-The dataset is divided into three subsets for original training images, training images labels and test sets iamges respectively.
+The dataset is divided into three subsets for original training images, training images labels and test sets images respectively.
 
 ### Solution Statement
+
+Recent developments in neural networks architectures and techniques have greatly advanced the performance of computer vision tasks. New applications have become possible thanks to these scientists progress, in particular in the field of self-driving cars. Hence, I'll focus on using end-to-end models, and taking advantage of transfer learning, for solving scene parsing. Specifically, I plan to review state-of-the-art architectures and techniques for semantic segmentation with deep learning.
 
 ### Benchmark Model
 _(approximately 1-2 paragraphs)_
