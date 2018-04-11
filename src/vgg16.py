@@ -1,183 +1,98 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib.layers import flatten
 
-def VGG16(features):
+class VGG:
     """
-    Builds VGG16
+    VGG class used to load VGG 16 and 19 architectures from paper:
+    https://arxiv.org/pdf/1409.1556.pdf
     """
 
-    # Convolutional Layer 1: 64 3X3 filters, stride 1, same padding, ReLU
-    conv1 = tf.layers.conv2d(
-        inputs=features,
-        filters=64,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv1')
-    # Convolutional Layer 2: 64 3X3 filters, stride 1, same padding, ReLU
-    conv2 = tf.layers.conv2d(
-        inputs=conv1,
-        filters=64,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv2')
-    # Pooling Layer 1: Max-pooling with 2x2 filter, stride 2
-    pool1 = tf.layers.max_pooling2d(
-        inputs=conv2,
-        pool_size=[2, 2],
-        strides=2,
-        name='pool1')
+    def __init__(self, weights_npy_file):
+        #TODO
+        print("TODO")
 
-    # ---
+    def conv_layer(self, input, filter, strides=[1,1,1,1], kernel=[1,3,3,1], padding='SAME', name):
+        # Get input shape
+        input_shape = input.get_shape().as_list()
 
-    # Convolutional Layer 3: 128 3X3 filters, stride 1, same padding, ReLU
-    conv3 = tf.layers.conv2d(
-        inputs=conv2,
-        filters=128,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv3')
-    # Convolutional Layer 4: 128 3X3 filters, stride 1, same padding, ReLU
-    conv4 = tf.layers.conv2d(
-        inputs=conv3,
-        filters=128,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv4')
-    # Pooling Layer 2: Max-pooling with 2x2 filter, stride 2
-    pool2 = tf.layers.max_pooling2d(
-        inputs=conv4,
-        pool_size=[2, 2],
-        strides=2,
-        pool='pool2')
+        # Define weights and bias
+        weights = tf.Variable(tf.truncated_normal(shape=[input_shape[1], filter], mean=0, stddev=0.1))
+        bias = tf.Variable(tf.zeros(filter))
 
-    # ---
+        # Apply convolution layer
+        conv = tf.nn.conv2d(input, filter, strides, padding, name)
 
-    # Convolutional Layer 5: 256 3X3 filters, stride 1, same padding, ReLU
-    conv5 = tf.layers.conv2d(
-        inputs=conv4,
-        filters=256,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv5')
-    # Convolutional Layer 6: 256 3X3 filters, stride 1, same padding, ReLU
-    conv6 = tf.layers.conv2d(
-        inputs=conv5,
-        filters=256,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv6')
-    # Convolutional Layer 7: 256 3X3 filters, stride 1, same padding, ReLU
-    conv7 = tf.layers.conv2d(
-        inputs=conv6,
-        filters=256,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv7')
-    # Pooling Layer 3: Max-pooling with 2x2 filter, stride 2
-    pool3 = tf.layers.max_pooling2d(
-        inputs=conv7,
-        pool_size=[2, 2],
-        strides=2,
-        name='pool3')
+        # Add bias
+        conv = tf.nn.bias_add(conv, bias)
 
-    # ---
+        # Apply activation function
+        conv = tf.nn.relu(conv)
+        return conv
 
-    # Convolutional Layer 8: 512 3X3 filters, stride 1, same padding, ReLU
-    conv8 = tf.layers.conv2d(
-        inputs=conv7,
-        filters=512,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv8')
-    # Convolutional Layer 9: 512 3X3 filters, stride 1, same padding, ReLU
-    conv9 = tf.layers.conv2d(
-        inputs=conv8,
-        filters=512,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv9')
-    # Convolutional Layer 10: 512 3X3 filters, stride 1, same padding, ReLU
-    conv10 = tf.layers.conv2d(
-        inputs=conv9,
-        filters=512,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv10')
-    # Pooling Layer 4: Max-pooling with 2x2 filter, stride 2
-    pool4 = tf.layers.max_pooling2d(
-        inputs=conv10,
-        pool_size=[2, 2],
-        strides=2,
-        name='pool4')
+    def max_pool_layer(self, input, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME', name):
+        return tf.nn.max_pool(input, ksize, strides, padding, name)
 
-    # ---
+    def dense_layer(self, input, neurons, name):
+        # Get input shape
+        input_shape = input.get_shape().as_list()
 
-    # Convolutional Layer 11: 512 3X3 filters, stride 1, same padding, ReLU
-    conv11 = tf.layers.conv2d(
-        inputs=conv10,
-        filters=512,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv11')
-    # Convolutional Layer 12: 512 3X3 filters, stride 1, same padding, ReLU
-    conv12 = tf.layers.conv2d(
-        inputs=conv11,
-        filters=512,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv12')
-    # Convolutional Layer 13: 512 3X3 filters, stride 1, same padding, ReLU
-    conv13 = tf.layers.conv2d(
-        inputs=conv12,
-        filters=512,
-        kernel_size=[3, 3],
-        padding="same",
-        activation=tf.nn.relu,
-        name='conv13')
-    # Pooling Layer 5: Max-pooling with 2x2 filter, stride 2
-    pool5 = tf.layers.max_pooling2d(
-        inputs=conv13,
-        pool_size=[2, 2],
-        strides=2,
-        name='pool5')
-    # ---
+        # Define weights and bias
+        weights = tf.Variable(tf.truncated_normal(shape=[input_shape[1], neurons], mean=0, stddev=0.1))
+        bias = tf.Variable(tf.zeros(filter))
 
-    flatten = tf.reshape(pool5, [-1, int(np.prod(pool5.get_shape()[1:]))])
+        # Apply matrix multiplication
+        dense = tf.add(tf.matmul(input, weights), bias)
 
-    # Dense Layer 1: 4,096 neurons
-    dense1 = tf.layers.dense(
-        inputs=flatten,
-        units=4096,
-        activation=tf.nn.relu,
-        name='dense1')
-    # Dense Layer 2: 4,096 neurons
-    dense2 = tf.layers.dense(
-        inputs=dense1,
-        units=4096,
-        activation=tf.nn.relu,
-        name='dense2')
-    # Dense Layer 3: 1,000 neurons
-    logits = tf.layers.dense(
-        inputs=dense2,
-        units=1000,
-        activation=tf.nn.relu,
-        name='logits')
+        # Apply activation function
+        dense = tf.nn.relu(dens)
+        return dense
 
-    # ---
+    def vgg16(self, features):
+        """
+        Builds VGG16
+        """
 
-    # Softmax
-    probabilities = tf.nn.softmax(logits)
+        # Block 1
+        conv1_1 = self.conv_layer(features, 64, 'conv1_1')
+        conv1_2 = self.conv_layer(conv1_1, 64, 'conv1_2')
+        pool1 = self.max_pool_layer(conv1_2, 'pool1')
+        # Block 2
+        conv2_1 = self.conv_layer(pool1, 128, 'conv2_1')
+        conv2_2 = self.conv_layer(conv2_1, 128, 'conv2_2')
+        pool2 = self.max_pool_layer(conv2_2, 'pool2')
+        # Block 3
+        conv3_1 = self.conv_layer(pool2, 256, 'conv3_1')
+        conv3_2 = self.conv_layer(conv3_1, 256, 'conv3_2')
+        conv3_3 = self.conv_layer(conv3_2, 256, 'conv3_3')
+        pool3 = self.max_pool_layer(conv3_3, 'pool3')
+        # Block 4
+        conv4_1 = self.conv_layer(pool3, 256, 'conv4_1')
+        conv4_2 = self.conv_layer(conv4_1, 256, 'conv4_2')
+        conv4_3 = self.conv_layer(conv4_2, 256, 'conv4_3')
+        pool4 = self.max_pool_layer(conv4_3, 'pool4')
+        # Block 5
+        conv5_1 = self.conv_layer(pool4, 256, 'conv3_1')
+        conv5_2 = self.conv_layer(conv5_1, 256, 'conv3_2')
+        conv5_3 = self.conv_layer(conv5_2, 256, 'conv3_3')
+        pool5 = self.max_pool_layer(conv5_3, 'pool3')
 
-    return probabilities
+        # Flatten layer
+        flatten_layer = flatten(pool5)
+
+        # Dense 1
+        fc6 = self.dense_layer(flatten_layer, 4096, 'fc6')
+        # Dense 2
+        fc7 = self.dense_layer(fc6, 4096, 'fc7')
+        # Dense 3
+        fc8 = self.dense_layer(fc7, 1000, 'fc8')
+
+        # Softmax
+        prob = tf.nn.softmax(fc8, name='prob')
+        return prob
+
+    def vgg19(self, features):
+        """
+        Builds VGG19
+        """
+        return None
