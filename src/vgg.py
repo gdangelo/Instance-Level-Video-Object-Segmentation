@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.layers import flatten
@@ -6,19 +7,37 @@ class VGG:
     """
     VGG class used to load VGG 16 and 19 architectures from paper:
     https://arxiv.org/pdf/1409.1556.pdf
+
+    Pretrained weights are loaded from Numpy (npy) files.
+    Numpy files have been downloaded from:
+    https://github.com/machrisaa/tensorflow-vgg
     """
 
-    def __init__(self, weights_npy_file):
-        #TODO
-        print("TODO")
+    def __init__(self, vgg16_weights_file=None, vgg19_weights_file=None):
+        self.vgg16_weights = None
+        self.vgg19_weights = None
 
-    def conv_layer(self, input, filter, strides=[1,1,1,1], kernel=[1,3,3,1], padding='SAME', name):
+        # Load weights for VGG16
+        if vgg16_weights_file is not None:
+            t1 = time.time()
+            vgg16_weights = np.load(vgg16_weights_file, encoding='latin1').item()
+            t2 = time.time()
+            print("Pretrained weights for VGG16 loaded in {0:} s".format(t2-t1))
+
+        # Load weights for VGG19
+        if vgg19_weights_file is not None:
+            t1 = time.time()
+            vgg19_weights = np.load(vgg19_weights_file, encoding='latin1').item()
+            t2 = time.time()
+            print("Pretrained weights for VGG19 loaded in {0:} s".format(t2-t1))
+
+    def conv_layer(self, input, filter, strides=[1,1,1,1], kernel=[1,3,3,1], padding='SAME', name=None):
         # Get input shape
         input_shape = input.get_shape().as_list()
 
         # Define weights and bias
-        weights = tf.Variable(tf.truncated_normal(shape=[input_shape[1], filter], mean=0, stddev=0.1))
-        bias = tf.Variable(tf.zeros(filter))
+        weights = get_weights(name)
+        bias = get_bias(name)
 
         # Apply convolution layer
         conv = tf.nn.conv2d(input, filter, strides, padding, name)
@@ -30,23 +49,29 @@ class VGG:
         conv = tf.nn.relu(conv)
         return conv
 
-    def max_pool_layer(self, input, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME', name):
+    def max_pool_layer(self, input, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME', name=None):
         return tf.nn.max_pool(input, ksize, strides, padding, name)
 
-    def dense_layer(self, input, neurons, name):
+    def dense_layer(self, input, name):
         # Get input shape
         input_shape = input.get_shape().as_list()
 
         # Define weights and bias
-        weights = tf.Variable(tf.truncated_normal(shape=[input_shape[1], neurons], mean=0, stddev=0.1))
-        bias = tf.Variable(tf.zeros(filter))
+        weights = get_weights(name)
+        bias = get_bias(name)
 
         # Apply matrix multiplication
         dense = tf.add(tf.matmul(input, weights), bias)
 
         # Apply activation function
-        dense = tf.nn.relu(dens)
+        dense = tf.nn.relu(dense)
         return dense
+
+    def get_weights(self, name):
+        return tf.constant(self.vgg16_weights[name][0])
+
+    def get_bias(self, name):
+        return tf.constant(self.vgg16_weights[name][1])
 
     def vgg16(self, features):
         """
