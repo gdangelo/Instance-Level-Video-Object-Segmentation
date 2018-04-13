@@ -123,6 +123,7 @@ class VGG:
         layers['conv5_3'] = conv5_3
         layers['pool5'] = pool5
 
+        '''
         # Flatten layer
         flatten_layer = flatten(pool5)
 
@@ -137,10 +138,10 @@ class VGG:
         layers['fc8'] = fc8
 
         # Softmax
-        prob = tf.nn.softmax(fc8, name='prob')
+        prob = tf.nn.softmax(fc8, name='prob')'''
 
-        # Return softmax probabilities and network layers
-        return (prob, layers)
+        # Return network layers
+        return layers
 
     def vgg19(self, features):
         """
@@ -197,6 +198,7 @@ class VGG:
         layers['conv5_4'] = conv5_4
         layers['pool5'] = pool5
 
+        '''
         # Flatten layer
         flatten_layer = flatten(pool5)
 
@@ -211,7 +213,7 @@ class VGG:
         layers['fc8'] = fc8
 
         # Softmax
-        prob = tf.nn.softmax(fc8, name='prob')
+        prob = tf.nn.softmax(fc8, name='prob')'''
 
-        # Return softmax probabilities and network layers
-        return (prob, layers)
+        # Return network layers
+        return layers
