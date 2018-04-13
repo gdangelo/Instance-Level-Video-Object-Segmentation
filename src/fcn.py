@@ -55,10 +55,10 @@ class FCN:
 
         return back_conv
 
-    def fcn_vgg_16(self, weights, features):
+    def fcn_vgg_16(self, features, weights, num_classes):
         # Build vgg16
-        vgg = VGG(weights, None)
-        vgg_16_logits, vgg_16_layers = vgg.vgg16(features)
+        vgg = VGG(vgg16_weights_file=weights)
+        vgg_16_layers = vgg.vgg16(features)
 
         # Replace dense layers with 1x1 convolution layers
         pool5 = vgg_16_layers['pool5']
@@ -66,7 +66,7 @@ class FCN:
         conv7_1 = self.conv_layer_1x1(conv6_1, 4096, 'conv7_1')
 
         # Upsampled to output segmentation using backward stride convolutions
-        fcn32 = self.back_conv_layer(conv7_1, 32, 7)
+        fcn32 = self.back_conv_layer(conv7_1, 32, num_classes)
 
-        # Return heatmap predictions
-        return tf.argmax(fcn32, axis=3)
+        # Return logits for FCN-32
+        return fcn32
