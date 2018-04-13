@@ -50,6 +50,15 @@ def generate_batches():
 
         yield np.array(images), np.array(gt_images)
 
+def optimize(logits, labels):
+    # Compute the loss function
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
+    loss = tf.reduce_mean(cross_entropy)
+
+    # Optimize the loss
+    optimizer = tf.train.MomentumOptimizer(FLAGS.learning_rate, FLAGS.momentum)
+    return optimizer.minimize(loss)
+
 def main(_):
     return None
 
