@@ -11,6 +11,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string("data_dir", os.path.join(script_dir, "../data/"), "Path to dataset")
+tf.flags.DEFINE_string("run_dir", os.path.join(script_dir, "../run/"), "Run directory")
 tf.flags.DEFINE_string("img_data", os.path.join(FLAGS.data_dir, 'train_color', '*.jpg'), "Path to training images")
 tf.flags.DEFINE_string("gt_img_data", os.path.join(FLAGS.data_dir, 'train_label', '*_instanceIds.png'), "Path to ground_truth images")
 tf.flags.DEFINE_string("vgg16_weights", os.path.join(script_dir, "../weights/vgg16.npy"), "Path to VGG16 weights")
@@ -93,10 +94,10 @@ def main(_):
         init = tf.global_variables_initializer()
         sess.run(init)
 
-        train_nn(sess, train_op, cross_entropy_loss)
+        #train_nn(sess, train_op, cross_entropy_loss)
 
         # Save model
-        path = './run/{}/{}.ckpt'.format(FLAGS.model, FLAGS.model)
+        path = os.path.join(FLAGS.run_dir, FLAGS.model, FLAGS.model+'.ckpt')
         utils.assure_path_exists(path)
         saver.save(sess, path)
         print("Model saved")
