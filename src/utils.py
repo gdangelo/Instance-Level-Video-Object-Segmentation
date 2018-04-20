@@ -3,6 +3,8 @@ import cv2
 import glob
 import random
 import numpy as np
+import tensorflow as tf
+from sklearn.model_selection import train_test_split
 
 def assure_path_exists(path):
     """
@@ -121,7 +123,6 @@ def generate_batches(img_data, gt_img_data, data_ratio, batch_size):
             # Load image and pad it if necessary
             image, _ = load_image(image_path)
             gt_image, _ = load_image(labels[get_filename_from_path(image_path)], ground_truth=True)
-            gt_image = gt_image // 1000
             # Append to current batch array
             images.append(image)
             gt_images.append(gt_image)
@@ -144,3 +145,17 @@ def cvpr2018_lut():
         39: 'bus',
         40: 'tricycle'
     }
+
+def get_labels_from_gt_images(annotations):
+    """
+    Generate labels TF Tensor from ground truth images.
+    :param annotations: TF Tensor of the ground truth images of shape [batch, height, width]
+    :return: TF Tensor of the corresponding one hot labels of shape [batch, height, widht, num_classes+1]
+    """
+
+    # One hot encoding of each pixel according to the CVPR2018 classes
+    labels = list(map(lambda x: tf.to_float(tf.equal(annotations // 1000, x)), cvpr2018_lut()))
+    # Add the instance ID
+    labels.append(tf.to_float(annotations % 1000))
+    # Stack everything together
+    return tf.stack(labels, axis=3)

@@ -24,21 +24,19 @@ tf.flags.DEFINE_integer("batch_size", "1", "Batch size for training")
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for SGD Optimizer")
 tf.flags.DEFINE_float("momentum", "0.9", "Momentum for SGD Optimizer")
 
-def optimize(logits, labels):
+def optimize(logits, annotations):
     """
     Build the TensorFLow loss and optimizer operations.
     :param logits: TF Tensor of the last layer in the neural network
-    :param labels: TF Placeholder for the correct label image
+    :param annotations: TF Placeholder for the correct annotations image
     :return: Tuple of (logits, train_op, cross_entropy_loss)
     """
 
-    # Reshape labels from [height, width] to [height, widht, num_classes]
-    labels_2d = list(map(lambda x: tf.equal(labels, x), utils.cvpr2018_lut()))
-    labels_2d_stacked = tf.stack(labels_2d, axis=3)
-    labels_2d_stacked_float = tf.to_float(labels_2d_stacked)
+    # Reshape labels from [height, width] to [height, widht, num_classes+1]
+    labels = utils.get_labels_from_gt_images(annotations)
 
     # Compute the loss function
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels_2d_stacked_float)
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
     cross_entropy_loss = tf.reduce_mean(cross_entropy)
 
     # Optimize the loss
@@ -91,11 +89,11 @@ def main(_):
         init = tf.global_variables_initializer()
         sess.run(init)
 
-        train_nn(sess, train_op, cross_entropy_loss)
+        #train_nn(sess, train_op, cross_entropy_loss)
 
         # Save model
         path = './run/fcn32/fcn32_vgg_16.ckpt'
-        assure_path_exists(path)
+        utils.assure_path_exists(path)
         saver.save(sess, path)
         print("Model saved")
 
