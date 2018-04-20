@@ -15,12 +15,13 @@ tf.flags.DEFINE_string("img_data", os.path.join(FLAGS.data_dir, 'train_color', '
 tf.flags.DEFINE_string("gt_img_data", os.path.join(FLAGS.data_dir, 'train_label', '*_instanceIds.png'), "Path to ground_truth images")
 tf.flags.DEFINE_string("vgg16_weights", os.path.join(script_dir, "../weights/vgg16.npy"), "Path to VGG16 weights")
 tf.flags.DEFINE_string("vgg19_weights", os.path.join(script_dir, "../weights/vgg19.npy"), "Path to VGG19 weights")
-tf.flags.DEFINE_float("data_ratio", "1", "Ratio of training data to use")
+tf.flags.DEFINE_string("model", "fcn8", "Model to use for training")
 tf.flags.DEFINE_integer("image_height", "2710", "Height of images in dataset")
 tf.flags.DEFINE_integer("image_width", "3384", "Width of images in dataset")
 tf.flags.DEFINE_integer("num_classes", "8", "Number of classes to predict")
 tf.flags.DEFINE_integer("epochs", "50", "Number of epochs for training")
 tf.flags.DEFINE_integer("batch_size", "1", "Batch size for training")
+tf.flags.DEFINE_float("data_ratio", "1", "Ratio of training data to use")
 tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for SGD Optimizer")
 tf.flags.DEFINE_float("momentum", "0.9", "Momentum for SGD Optimizer")
 
@@ -76,9 +77,12 @@ def main(_):
     labels = tf.placeholder(tf.int32, shape=[None, FLAGS.image_height, FLAGS.image_width])
 
     # Load FCN model with pretrained weights for VGG16
-    logits, _ = FCN().fcn32_vgg_16(features, FLAGS.vgg16_weights, FLAGS.num_classes)
-    #logits, _ = FCN().fcn16_vgg_16(features, FLAGS.vgg16_weights, FLAGS.num_classes)
-    #logits, _ = FCN().fcn8_vgg_16(features, FLAGS.vgg16_weights, FLAGS.num_classes)
+    if FLAGS.model == 'fcn32':
+        logits, _ = FCN().fcn32_vgg_16(features, FLAGS.vgg16_weights, FLAGS.num_classes)
+    elif FLAGS.model == 'fcn16':
+        logits, _ = FCN().fcn16_vgg_16(features, FLAGS.vgg16_weights, FLAGS.num_classes)
+    else:
+        logits, _ = FCN().fcn8_vgg_16(features, FLAGS.vgg16_weights, FLAGS.num_classes)
 
     # Build the TF loss and optimizer
     train_op, cross_entropy_loss = optimize(logits, labels)
@@ -89,10 +93,10 @@ def main(_):
         init = tf.global_variables_initializer()
         sess.run(init)
 
-        #train_nn(sess, train_op, cross_entropy_loss)
+        train_nn(sess, train_op, cross_entropy_loss)
 
         # Save model
-        path = './run/fcn32/fcn32_vgg_16.ckpt'
+        path = './run/{}/{}.ckpt'.format(FLAGS.model, FLAGS.model)
         utils.assure_path_exists(path)
         saver.save(sess, path)
         print("Model saved")
