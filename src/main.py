@@ -26,11 +26,22 @@ tf.flags.DEFINE_float("learning_rate", "1e-4", "Learning rate for SGD Optimizer"
 tf.flags.DEFINE_float("momentum", "0.9", "Momentum for SGD Optimizer")
 
 def assure_path_exists(path):
+    """
+    Assure folders from path exist, or create them.
+    :param path: Path to verify or create
+    :return:
+    """
+
     dir = os.path.dirname(path)
     if not os.path.exists(dir):
         os.makedirs(dir)
 
 def cvpr2018_lut():
+    """
+    Build dictionnary with labels id/name to predict.
+    :return: Dictionnary with label id - label name
+    """
+
     return {
         0: 'others',
         33: 'car',
@@ -43,6 +54,13 @@ def cvpr2018_lut():
     }
 
 def get_filename_from_path(path, str_to_remove=None):
+    """
+    Retrieve filename from path without extension.
+    :param path: Path to file
+    :param str_to_remove: String to remove from filename
+    :return: Filename without extension
+    """
+
     # Get filename without extension
     filename_w_ext = os.path.basename(path)
     filename, file_extension = os.path.splitext(filename_w_ext)
@@ -54,6 +72,14 @@ def get_filename_from_path(path, str_to_remove=None):
     return filename
 
 def load_image(path, ground_truth=False, pad=True, factor=32):
+    """
+    Load image from path and pad it on each side to respect factor requirement.
+    :param path: Path to the image to read
+    :param ground_truth: If set to True, image is read as grayscale
+    :param pad: If set to True, image is padded to respect factor
+    :param factor: Image dimensions must be divisible by factor
+    """
+
     # Read image from path
     if ground_truth is True:
         img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
@@ -91,6 +117,13 @@ def load_image(path, ground_truth=False, pad=True, factor=32):
     return img, (top, bottom, left, right)
 
 def crop_image(img, pads):
+    """
+    Crop image according to padding values on each side.
+    :param img: Image to crop on each side
+    :param pads: Tuple of (top, bottom, left, right) padding values
+    :return: Cropped image
+    """
+
     # Get image dimensions and padding values
     top, bottom, left, right = pads
     height, width = img.shape[:2]
@@ -98,6 +131,10 @@ def crop_image(img, pads):
     return img[top:height-bottom, left:width-right]
 
 def generate_batches():
+    """
+    Generate function to create batches of training data.
+    """
+
     # Enumerate every images/labels paths
     image_paths = glob.glob(os.path.join(FLAGS.data_dir, 'train_color', '*.jpg'))
     label_paths = glob.glob(os.path.join(FLAGS.data_dir, 'train_label', '*_instanceIds.png'))
@@ -126,6 +163,13 @@ def generate_batches():
         yield np.array(images), np.array(gt_images)
 
 def optimize(logits, labels):
+    """
+    Build the TensorFLow loss and optimizer operations.
+    :param logits: TF Tensor of the last layer in the neural network
+    :param labels: TF Placeholder for the correct label image
+    :return: Tuple of (logits, train_op, cross_entropy_loss)
+    """
+
     # Reshape labels from [height, width] to [height, widht, num_classes]
     labels_2d = list(map(lambda x: tf.equal(labels, x), cvpr2018_lut()))
     labels_2d_stacked = tf.stack(labels_2d, axis=3)
@@ -140,6 +184,31 @@ def optimize(logits, labels):
     train_op = optimizer.minimize(cross_entropy_loss)
 
     return train_op, cross_entropy_loss
+
+def train_nn(sess, train_op, cross_entropy_loss):
+    """
+    Train neural network and print out the loss during training.
+    :param sess: TF Session
+    :param train_op: TF Operation to train the neural network
+    :param cross_entropy_loss: TF Tensor for the amount of loss
+    :param input_image: TF Placeholder for input images
+    :param correct_label: TF Placeholder for label images
+    """
+
+    # Get number of batches for visualization purpose
+    n_samples = len(glob.glob(os.path.join(FLAGS.data_dir, 'train_color', '*.jpg')))
+    n_batches = int(math.ceil(float(n_samples) / FLAGS.batch_size))
+
+    for i in range(FLAGS.epochs):
+        # Generate batches
+        batches = tqdm(generate_batches(),
+                        desc='Epoch {}/{} (loss _.___)'.format(i+1, FLAGS.epochs),
+                        total=n_batches)
+        # Run the training pipeline for each batch
+        for x_batch, y_batch in batches:
+            _, loss = sess.run([train_op, cross_entropy_loss], feed_dict={ features: x_batch, labels: y_batch })
+            # Print loss after each batch has been trained
+            batches.set_description('Epoch {}/{} (loss {:.3f})'.format(i+1, FLAGS.epochs, loss))
 
 def main(_):
     # Define TF placeholders for training images and labels
@@ -160,18 +229,7 @@ def main(_):
         init = tf.global_variables_initializer()
         sess.run(init)
 
-        n_samples = len(glob.glob(os.path.join(FLAGS.data_dir, 'train_color', '*.jpg')))
-        n_batches = int(math.ceil(float(n_samples) / FLAGS.batch_size))
-
-        for i in range(FLAGS.epochs):
-            batches = tqdm(generate_batches(),
-                            desc='Epoch {}/{} (loss _.___)'.format(i+1, FLAGS.epochs),
-                            total=n_batches)
-
-            # Run the training pipeline for each batch
-            for x_batch, y_batch in batches:
-                _, loss = sess.run([train_op, cross_entropy_loss], feed_dict={ features: x_batch, labels: y_batch })
-                batches.set_description('Epoch {}/{} (loss {:.3f})'.format(i+1, FLAGS.epochs, loss))
+        train_nn(sess, train_op, cross_entropy_loss)
 
         # Save model
         path = './run/fcn32/fcn32_vgg_16.ckpt'
