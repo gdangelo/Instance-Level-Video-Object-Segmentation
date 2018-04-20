@@ -1,4 +1,5 @@
 import os
+import cv2
 import math
 import glob
 import random
@@ -52,6 +53,50 @@ def get_filename_from_path(path, str_to_remove=None):
 
     return filename
 
+def load_image(path, ground_truth=False, pad=True, factor=32):
+    # Read image from path
+    if ground_truth is True:
+        img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+    else:
+        img = cv2.imread(str(path))
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    # Return image if no padding is required
+    if pad is not True:
+        return img
+
+    # Compute pixels needed to pad image
+    height, width = img.shape[:2]
+
+    if height % factor == 0:
+        top = 0
+        bottom = 0
+    else:
+        pixels = factor - height % factor
+        top = int(pixels / 2)
+        bottom = pixels - top
+
+    if width % factor == 0:
+        left = 0
+        right = 0
+    else:
+        pixels = factor - width % factor
+        left = int(pixels / 2)
+        right = pixels - left
+
+    # Draw border around image
+    img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_REFLECT_101)
+
+    # Return padded image and padding values
+    return img, (top, bottom, left, right)
+
+def crop_image(img, pads):
+    # Get image dimensions and padding values
+    top, bottom, left, right = pads
+    height, width = img.shape[:2]
+    # Crop image
+    return img[top:height-bottom, left:width-right]
+
 def generate_batches():
     # Enumerate every images/labels paths
     image_paths = glob.glob(os.path.join(FLAGS.data_dir, 'train_color', '*.jpg'))
@@ -68,11 +113,13 @@ def generate_batches():
     for batch_i in range(0, len(image_paths), FLAGS.batch_size):
         images = []
         gt_images = []
-        # Read images and append to current batch
+        # For each image in current batch
         for image_path in image_paths[batch_i:batch_i + FLAGS.batch_size]:
-            image = imread(image_path)
-            gt_image = imread(labels[get_filename_from_path(image_path)])
+            # Load image and pad it if necessary
+            image = load_image(image_path)
+            gt_image = load_image(labels[get_filename_from_path(image_path)], ground_truth=True)
             gt_image = gt_image // 1000
+            # Append to current batch array
             images.append(image)
             gt_images.append(gt_image)
 
