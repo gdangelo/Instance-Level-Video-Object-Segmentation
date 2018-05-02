@@ -17,7 +17,7 @@ class FCN:
         bias = tf.Variable(tf.zeros(out_channels))
 
         # Apply convolution and add bias
-        conv = tf.nn.conv2d(input, weights, [1,1,1,1], 'VALID', name=name)
+        conv = tf.nn.conv2d(input, weights, [1,1,1,1], 'SAME', name=name)
         conv = tf.nn.bias_add(conv, bias)
 
         # Apply ReLU
@@ -31,8 +31,8 @@ class FCN:
         in_features = input.get_shape()[3].value
 
         # Get output shape
-        new_height = ((input_shape[1] - 1) * factor) + 1
-        new_width = ((input_shape[2] - 1) * factor) + 1
+        new_height = input_shape[1] * factor
+        new_width = input_shape[2] * factor
         new_shape = [input_shape[0], new_height, new_width, num_classes]
         output_shape = tf.stack(new_shape)
 
@@ -74,14 +74,15 @@ class FCN:
         nn_layers['pool5_conv2'] = pool5_conv2
 
         # Upsampled to output segmentation using backward stride convolutions
-        fcn32 = self.back_conv_layer(pool5_conv2, 32, num_classes)
+        logits = self.back_conv_layer(pool5_conv2, 32, num_classes)
+        probabilities = tf.nn.softmax(logits, name='fcn32_logits_to_softmax')
 
-        # Return logits for FCN-32
-        return fcn32, nn_layers
+        # Return logits, probabilities, and layers for FCN-32
+        return logits, probabilities, nn_layers
 
     def fcn16_vgg_16(self, features, weights, num_classes):
         # Load FCN32
-        _, nn_layers = self.fcn32_vgg_16(features, weights, num_classes)
+        _, _, nn_layers = self.fcn32_vgg_16(features, weights, num_classes)
 
         # Add 1x1 convolution on top of pool4 layer
         pool4 = nn_layers['pool4']
@@ -94,13 +95,15 @@ class FCN:
         fuse1 = tf.add(pool4_conv1, pool5_conv2_2x, 'fuse1')
 
         # Upsampled to output segmentation using backward stride convolutions
-        fcn16 = self.back_conv_layer(fuse1, 16, num_classes)
+        logits = self.back_conv_layer(fuse1, 16, num_classes)
+        probabilities = tf.nn.softmax(logits, name='fcn16_logits_to_softmax')
 
-        return fcn16, nn_layers
+        # Return logits, probabilities, and layers for FCN-16
+        return logits, probabilities, nn_layers
 
     def fcn8_vgg_16(self, features, weights, num_classes):
         # Load FCN16
-        _, nn_layers = self.fcn16_vgg_16(features, weights, num_classes)
+        _, _, nn_layers = self.fcn16_vgg_16(features, weights, num_classes)
 
         # Add 1x1 convolution on top of pool3 layer
         pool3 = nn_layers['pool3']
@@ -116,6 +119,8 @@ class FCN:
         fuse2 = tf.add(fuse1, pool5_conv2_4x, 'fuse2')
 
         # Upsampled to output segmentation using backward stride convolutions
-        fcn8 = self.back_conv_layer(fuse2, 8, num_classes)
+        logits = self.back_conv_layer(fuse2, 8, num_classes)
+        probabilities = tf.nn.softmax(logits, name='fcn8_logits_to_softmax')
 
-        return fcn8, nn_layers
+        # Return logits, probabilities, and layers for FCN-8
+        return logits, probabilities, nn_layers
