@@ -22,14 +22,14 @@ class VGG:
             t1 = time.time()
             self.vgg16_weights = np.load(vgg16_weights_file, encoding='latin1').item()
             t2 = time.time()
-            print("Pretrained weights for VGG16 loaded in {0:.2f}s".format(t2-t1))
+            print("Pre-trained weights for VGG16 loaded in {0:.2f}s".format(t2-t1))
 
         # Load weights for VGG19
         if vgg19_weights_file is not None:
             t1 = time.time()
             self.vgg19_weights = np.load(vgg19_weights_file, encoding='latin1').item()
             t2 = time.time()
-            print("Pretrained weights for VGG19 loaded in {0:.2f}s".format(t2-t1))
+            print("Pre-trained weights for VGG19 loaded in {0:.2f}s".format(t2-t1))
 
     def conv_layer(self, input, strides=[1,1,1,1], padding='SAME', name=None, model='vgg16'):
         # Define weights and bias
