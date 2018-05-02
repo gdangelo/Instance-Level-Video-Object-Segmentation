@@ -1,62 +1,102 @@
 import os
-import cv2
 import glob
-import random
-import numpy as np
+import shutil
 import tensorflow as tf
-from sklearn.model_selection import train_test_split
 
-def assure_path_exists(path):
+def clean_path(path):
     """
-    Assure folders from path exist, or create them.
-    :param path: Path to verify or create
+    Delete directory tree from path and (re-)create it.
+    :param path: Path to clean and (re-)create
     :return:
     """
 
     dir = os.path.dirname(path)
-    if not os.path.exists(dir):
-        os.makedirs(dir)
+    # Clean path diretories if exist
+    if os.path.exists(dir):
+        shutil.rmtree(dir)
+    # Create path directories
+    os.makedirs(dir)
 
-def get_filename_from_path(path, str_to_remove=None):
+def get_inputs(images_path, gt_images_path, height, width, batch_size):
     """
-    Retrieve filename from path without extension.
-    :param path: Path to file
-    :param str_to_remove: String to remove from filename
-    :return: Filename without extension
+    Get inputs from CVPR2018 training datasets.
+    :param images_path: Path to the CVPR2018 images data.
+    :param gt_images_path: Path to the CVPR2018 ground truth images data.
+    :param height: Image height.
+    :param width: Image width.
+    :param batch_size: Number of images per batch.
+    :return:
+        - images: Images. 4D tensor of [batch_size, height, width, 3] size.
+        - gt_images: Ground truth images. 4D tensor of [batch_size, height, width, 1] size.
     """
 
-    # Get filename without extension
-    filename_w_ext = os.path.basename(path)
-    filename, file_extension = os.path.splitext(filename_w_ext)
+    # Make a queue of file names including all the images files in
+    # the CVPR2018 dataset directories
+    train_images = tf.convert_to_tensor(glob.glob(images_path), dtype=tf.string)
+    train_gt_images = tf.convert_to_tensor(glob.glob(gt_images_path), dtype=tf.string)
+    filename_queues = tf.train.slice_input_producer([train_images, train_gt_images], shuffle=True)
 
-    # Remove occurences in the filename
-    if str_to_remove is not None:
-        filename = filename.replace(str_to_remove, '')
+    # Read whole image and ground truth image files from the queues
+    raw_image = tf.read_file(filename_queues[0])
+    raw_gt_image = tf.read_file(filename_queues[1])
 
-    return filename
+    # Decode the image and ground truth image raw content
+    image = tf.image.decode_image(raw_image, channels=3)
+    gt_image = tf.image.decode_image(raw_gt_image, channels=1)
 
-def load_image(path, ground_truth=False, pad=True, factor=32):
+    # Preprocess image and ground truth image
+    image, label = preprocess(image, gt_image, height, width)
+
+    # Generate training batches
+    return generate_batches(image, label, batch_size, shuffle=True)
+
+def preprocess(image, gt_image, height, width):
     """
-    Load image from path and pad it on each side to respect factor requirement.
-    :param path: Path to the image to read
-    :param ground_truth: If set to True, image is read as grayscale
-    :param pad: If set to True, image is padded to respect factor
+    Perform preprocessing for image and ground truth image before feeding into network.
+    :param image: Image 3D Tensor of shape [height, width, 3]
+    :param annotation: Ground truth image 3D Tensor of shape [height, width, 1]
+    :param height: Image height.
+    :param width: Image width.
+    :result:
+        - image: Image. 3D tensor of [new_height, new_width, 3] size.
+        - label: Label. 3D tensor of [new_height, new_width, num_classes+1] size.
+    """
+
+    # Convert the image dtypes to tf.float32 if needed
+    if image.dtype != tf.float32:
+        image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+
+    # Convert the image dtypes to tf.int32 if needed
+    if gt_image.dtype != tf.int32:
+        gt_image = tf.image.convert_image_dtype(gt_image, dtype=tf.int32)
+
+    # Compute number of pixels needed to pad images
+    # in order to respect FCN factor requirement
+    top, bottom, left, right = get_paddings(height, width, 32)
+    new_height = height + top + bottom
+    new_width = width + left + right
+
+    # Pad images
+    image = tf.image.resize_image_with_crop_or_pad(image, new_height, new_width)
+    gt_image = tf.image.resize_image_with_crop_or_pad(gt_image, new_height, new_width)
+
+    # Shape TF tensors
+    image.set_shape(shape=(new_height, new_width, 3))
+    gt_image = tf.reshape(gt_image, shape=(new_height, new_width))
+
+    # Perform one-hot-encoding on the ground truth image
+    label_ohe = one_hot_encode(gt_image)
+
+    return image, label_ohe
+
+def get_paddings(height, width, factor):
+    """
+    Compute number of pixels to add on each side to respect factor requirement.
+    :param height: Image height
+    :param width: Image width
     :param factor: Image dimensions must be divisible by factor
+    :return: Number of pixels to add on each side
     """
-
-    # Read image from path
-    if ground_truth is True:
-        img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
-    else:
-        img = cv2.imread(str(path))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-    # Return image if no padding is required
-    if pad is not True:
-        return img
-
-    # Compute pixels needed to pad image
-    height, width = img.shape[:2]
 
     if height % factor == 0:
         top = 0
@@ -74,62 +114,23 @@ def load_image(path, ground_truth=False, pad=True, factor=32):
         left = int(pixels / 2)
         right = pixels - left
 
-    # Draw border around image
-    img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_REFLECT_101)
+    return (top, bottom, left, right)
 
-    # Return padded image and padding values
-    return img, (top, bottom, left, right)
-
-def crop_image(img, pads):
+def one_hot_encode(gt_image):
     """
-    Crop image according to padding values on each side.
-    :param img: Image to crop on each side
-    :param pads: Tuple of (top, bottom, left, right) padding values
-    :return: Cropped image
+    Generate label TF Tensor from ground truth image.
+    :param gt_image: TF Tensor of the ground truth image of shape [height, width]
+    :return: TF Tensor of the corresponding one hot label of shape [height, widht, num_classes+1]
     """
 
-    # Get image dimensions and padding values
-    top, bottom, left, right = pads
-    height, width = img.shape[:2]
-    # Crop image
-    return img[top:height-bottom, left:width-right]
+    # One hot encoding of each pixel according to the CVPR2018 classes
+    label_ohe = list(map(lambda x: tf.to_float(tf.equal(gt_image // 1000, x)), cvpr2018_labels()))
+    # Add the instance ID
+    #labels.append(tf.to_float(gt_image % 1000))
+    # Stack everything together
+    return tf.stack(label_ohe, axis=-1)
 
-def generate_batches(img_data, gt_img_data, data_ratio, batch_size):
-    """
-    Generate function to create batches of training data.
-    :param img_data: Path to training images
-    :param gt_img_data: Path to ground_truth images
-    :param data_ratio: Ratio of training data to use
-    :param batch_size: Batch size for training
-    """
-
-    # Enumerate every images/labels paths
-    image_paths = glob.glob(img_data)
-    label_paths = glob.glob(gt_img_data)
-    labels = {get_filename_from_path(path, '_instanceIds'): path for path in label_paths}
-
-    # Shuffle dataset
-    random.shuffle(image_paths)
-
-    # Only use a certain ratio of the dataset
-    image_paths[:int(len(image_paths)*data_ratio)-1]
-
-    # Generate batches
-    for batch_i in range(0, len(image_paths), batch_size):
-        images = []
-        gt_images = []
-        # For each image in current batch
-        for image_path in image_paths[batch_i:batch_i + batch_size]:
-            # Load image and pad it if necessary
-            image, _ = load_image(image_path)
-            gt_image, _ = load_image(labels[get_filename_from_path(image_path)], ground_truth=True)
-            # Append to current batch array
-            images.append(image)
-            gt_images.append(gt_image)
-
-        yield np.array(images), np.array(gt_images)
-
-def cvpr2018_lut():
+def cvpr2018_labels():
     """
     Build dictionnary with labels id/name to predict.
     :return: Dictionnary with label id - label name
@@ -146,16 +147,29 @@ def cvpr2018_lut():
         40: 'tricycle'
     }
 
-def get_labels_from_gt_images(annotations):
+def generate_batches(image, label, batch_size, shuffle):
     """
-    Generate labels TF Tensor from ground truth images.
-    :param annotations: TF Tensor of the ground truth images of shape [batch, height, width]
-    :return: TF Tensor of the corresponding one hot labels of shape [batch, height, widht, num_classes+1]
+    Construct a queued batch of images and labels.
+    :param image: 3-D Tensor of [height, width, 3] of type.float32.
+    :param label: 3-D Tensor of [height, width, num_classes+1] of type.int32.
+    :param batch_size: Number of images per batch.
+    :param shuffle: boolean indicating whether to use a shuffling queue.
+    :return:
+        - images: Images. 4D tensor of [batch_size, height, width, 3] size.
+        - labels: Labels. 4D tensor of [batch_size, height, width, num_classes+1] size.
     """
 
-    # One hot encoding of each pixel according to the CVPR2018 classes
-    labels = list(map(lambda x: tf.to_float(tf.equal(annotations // 1000, x)), cvpr2018_lut()))
-    # Add the instance ID
-    labels.append(tf.to_float(annotations % 1000))
-    # Stack everything together
-    return tf.stack(labels, axis=3)
+    # Create a queue that shuffles the examples, and then
+    # read 'batch_size' images + labels from the example queue.
+    if shuffle:
+        return tf.train.shuffle_batch(
+            [image, label],
+            batch_size=batch_size,
+            capacity=100,
+            min_after_dequeue=50,
+            allow_smaller_final_batch=True)
+    else:
+        return tf.train.batch(
+            [image, label],
+            batch_size=batch_size,
+            allow_smaller_final_batch=True)
