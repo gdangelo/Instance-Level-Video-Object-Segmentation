@@ -70,19 +70,25 @@ def preprocess(image, gt_image, height, width):
     if gt_image.dtype != tf.int32:
         gt_image = tf.image.convert_image_dtype(gt_image, dtype=tf.int32)
 
+    '''
     # Compute number of pixels needed to pad images
     # in order to respect FCN factor requirement
     top, bottom, left, right = get_paddings(height, width, 32)
     new_height = height + top + bottom
     new_width = width + left + right
 
-    # Pad images
+    # Pad images if necessary
     image = tf.image.resize_image_with_crop_or_pad(image, new_height, new_width)
     gt_image = tf.image.resize_image_with_crop_or_pad(gt_image, new_height, new_width)
+    '''
 
     # Shape TF tensors
-    image.set_shape(shape=(new_height, new_width, 3))
-    gt_image = tf.reshape(gt_image, shape=(new_height, new_width))
+    image.set_shape(shape=(height, width, 3))
+    gt_image.set_shape(shape=(height, width, 1))
+
+    # Dowscale images to save memory and time ;)
+    image = tf.image.resize_images(image, size=(256, 256))
+    gt_image = tf.squeeze(tf.image.resize_images(gt_image, size=(256, 256)))
 
     # Perform one-hot-encoding on the ground truth image
     label_ohe = one_hot_encode(gt_image)
