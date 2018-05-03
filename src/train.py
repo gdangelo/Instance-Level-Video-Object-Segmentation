@@ -57,32 +57,14 @@ def train():
                                       FLAGS.batch_size)
 
         # Load FCN model with pre-trained weights for VGG16
-        if FLAGS.model == 'fcn32':
-            print("Building FCN32_VGG16 model...")
-            logits, probabilities, _ = FCN().fcn32_vgg_16(images, FLAGS.vgg16_weights, FLAGS.num_classes)
-        elif FLAGS.model == 'fcn16':
-            print("Building FCN16_VGG16 model...")
-            logits, probabilities, _ = FCN().fcn16_vgg_16(images, FLAGS.vgg16_weights, FLAGS.num_classes)
-        elif FLAGS.model == 'fcn8':
-            print("Building FCN8_VGG16 model...")
-            logits, probabilities, _ = FCN().fcn8_vgg_16(images, FLAGS.vgg16_weights, FLAGS.num_classes)
-        else:
-            raise ValueError('Unknown model: ' + FLAGS.model)
+        logits, probabilities = load_fcn(images)
 
         # Calculate loss
         xentropy_loss = loss(logits, labels_ohe)
 
-        # Compute decay steps for learning rate
+        # Define learning rate
         num_batches_per_epoch = len(glob.glob(FLAGS.images_path)) / FLAGS.batch_size
-        decay_steps = int(num_batches_per_epoch * FLAGS.num_epochs_per_decay)
-
-        # Define exponentially decaying learning rate
-        lr = tf.train.exponential_decay(
-            learning_rate = FLAGS.initial_learning_rate,
-            global_step = global_step,
-            decay_steps = decay_steps,
-            decay_rate = FLAGS.learning_rate_decay_factor,
-            staircase = True)
+        lr = learning_rate(num_batches_per_epoch, global_step)
 
         # Build a Graph that trains the model with one batch of examples and
         # updates the model parameters
@@ -108,8 +90,16 @@ def train():
                 return tf.train.SessionRunArgs([xentropy_loss, accuracy, mean_iou, lr])
 
             def after_run(self, run_context, run_values):
+                # Display info on every new batch
+                if self._step % num_batches_per_epoch == 0:
+                    learning_rate_value = run_values.results[3]
+                    print('\n-- Epoch %s/%s, learning rate = %f' %
+                          (int(self._step/num_batches_per_epoch) + 1,
+                          FLAGS.num_epochs,
+                          learning_rate_value))
+
                 # Log training summary every 'log_frequency' steps
-                if self._step % FLAGS.log_frequency == 0:
+                if self._step % min(num_batches_per_epoch, FLAGS.log_frequency) == 0:
                     # Compute how long the training steps lasted
                     current_time = time.time()
                     duration = current_time - self._start_time
@@ -148,7 +138,45 @@ def train():
             config=config) as mon_sess:
 
             while not mon_sess.should_stop():
-                mon_sess.run([train_op, accuracy, mean_iou, metrics_op])
+                mon_sess.run([train_op, accuracy, mean_iou, metrics_op, lr])
+
+def load_fcn(images):
+    """
+    Load FCN model with pre-trained VGG16 weigths.
+    :return: Logits and probabilities from FCN output
+    """
+
+    if FLAGS.model == 'fcn32':
+        print("Building FCN32_VGG16 model...")
+        logits, probabilities, _ = FCN().fcn32_vgg_16(images, FLAGS.vgg16_weights, FLAGS.num_classes)
+    elif FLAGS.model == 'fcn16':
+        print("Building FCN16_VGG16 model...")
+        logits, probabilities, _ = FCN().fcn16_vgg_16(images, FLAGS.vgg16_weights, FLAGS.num_classes)
+    elif FLAGS.model == 'fcn8':
+        print("Building FCN8_VGG16 model...")
+        logits, probabilities, _ = FCN().fcn8_vgg_16(images, FLAGS.vgg16_weights, FLAGS.num_classes)
+    else:
+        raise ValueError('Unknown model: ' + FLAGS.model)
+
+    return logits, probabilities
+
+def learning_rate(num_batches_per_epoch, global_step):
+    """
+    Define exponentially decaying learning rate.
+    :param global_step: Variable counting the number of training steps processed
+    :return: Learning rate
+    """
+
+    # Compute decay steps for learning rate
+    decay_steps = int(num_batches_per_epoch * FLAGS.num_epochs_per_decay)
+
+    # Define exponentially decaying learning rate
+    return tf.train.exponential_decay(
+        learning_rate = FLAGS.initial_learning_rate,
+        global_step = global_step,
+        decay_steps = decay_steps,
+        decay_rate = FLAGS.learning_rate_decay_factor,
+        staircase = True)
 
 def loss(logits, labels_ohe):
     """
