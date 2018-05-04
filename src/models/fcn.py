@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import tensorflow as tf
-from vgg import VGG
+from models.vgg import VGG
 
 class FCN:
     """

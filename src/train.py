@@ -1,12 +1,13 @@
 import os
 import glob
+import math
 
 from datetime import datetime
 import time
 
 import utils
 import tensorflow as tf
-from fcn import FCN
+from models.fcn import FCN
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -40,6 +41,60 @@ tf.flags.DEFINE_float('momentum', 0.9, "Momentum for SGD Optimizer.")
 tf.flags.DEFINE_boolean('log_device_placement', False, "Whether to log device placement.")
 tf.flags.DEFINE_integer('log_frequency', 10, "How often to log results to the console.")
 
+class _LoggerHook(tf.train.SessionRunHook):
+    """
+    TF Hook used in training session to log metrics and runtime.
+    """
+
+    def __init__(self, xentropy_loss, accuracy, mean_iou, lr, num_batches_per_epoch):
+        self._xentropy_loss = xentropy_loss
+        self._accuracy = accuracy
+        self._mean_iou = mean_iou
+        self._lr = lr
+        self._num_batches_per_epoch = num_batches_per_epoch
+
+    def begin(self):
+        self._step = -1
+        self._start_time = time.time()
+
+    def before_run(self, run_context):
+        self._step += 1
+        # Ask for metrics values
+        return tf.train.SessionRunArgs([self._xentropy_loss, self._accuracy,
+                                        self._mean_iou, self._lr])
+
+    def after_run(self, run_context, run_values):
+        # Display info on every new batch
+        if self._step % self._num_batches_per_epoch == 0:
+            learning_rate_value = run_values.results[3]
+            print('\n-- Epoch %s/%s, learning rate = %f' %
+                  (int(self._step/self._num_batches_per_epoch) + 1,
+                  FLAGS.num_epochs,
+                  learning_rate_value))
+
+        # Log training summary every 'log_frequency' steps
+        if self._step % min(self._num_batches_per_epoch, FLAGS.log_frequency) == 0:
+            # Compute how long the training steps lasted
+            current_time = time.time()
+            duration = current_time - self._start_time
+            self._start_time = current_time
+
+            # Retrieve metrics values
+            loss_value = run_values.results[0]
+            accuracy_value = run_values.results[1]
+            mean_iou_value = run_values.results[2]
+
+            # Compute how the training performed
+            examples_per_sec = FLAGS.log_frequency * FLAGS.batch_size / duration
+            sec_per_batch = float(duration / FLAGS.log_frequency)
+
+            # Display results
+            format_str = ('%s: step %d, loss = %.2f, accuracy = %.2f, IOU = %.2f '
+                          '(%.1f examples/sec; %.3f sec/batch)')
+            print(format_str % (datetime.now(), self._step, loss_value,
+                                accuracy_value, mean_iou_value,
+                                examples_per_sec, sec_per_batch))
+
 def train():
     """
     Train neural network for a number of steps.
@@ -63,7 +118,7 @@ def train():
         xentropy_loss = loss(logits, labels_ohe)
 
         # Define learning rate
-        num_batches_per_epoch = len(glob.glob(FLAGS.images_path)) / FLAGS.batch_size
+        num_batches_per_epoch = math.ceil(len(glob.glob(FLAGS.images_path)) / FLAGS.batch_size)
         lr = learning_rate(num_batches_per_epoch, global_step)
 
         # Build a Graph that trains the model with one batch of examples and
@@ -77,50 +132,6 @@ def train():
         mean_iou, mean_iou_update = tf.metrics.mean_iou(labels, predictions, FLAGS.num_classes)
         metrics_op = tf.group(accuracy_update, mean_iou_update)
 
-        class _LoggerHook(tf.train.SessionRunHook):
-            """Logs metrics and runtime."""
-
-            def begin(self):
-                self._step = -1
-                self._start_time = time.time()
-
-            def before_run(self, run_context):
-                self._step += 1
-                # Ask for metrics values
-                return tf.train.SessionRunArgs([xentropy_loss, accuracy, mean_iou, lr])
-
-            def after_run(self, run_context, run_values):
-                # Display info on every new batch
-                if self._step % num_batches_per_epoch == 0:
-                    learning_rate_value = run_values.results[3]
-                    print('\n-- Epoch %s/%s, learning rate = %f' %
-                          (int(self._step/num_batches_per_epoch) + 1,
-                          FLAGS.num_epochs,
-                          learning_rate_value))
-
-                # Log training summary every 'log_frequency' steps
-                if self._step % min(num_batches_per_epoch, FLAGS.log_frequency) == 0:
-                    # Compute how long the training steps lasted
-                    current_time = time.time()
-                    duration = current_time - self._start_time
-                    self._start_time = current_time
-
-                    # Retrieve metrics values
-                    loss_value = run_values.results[0]
-                    accuracy_value = run_values.results[1]
-                    mean_iou_value = run_values.results[2]
-
-                    # Compute how the training performed
-                    examples_per_sec = FLAGS.log_frequency * FLAGS.batch_size / duration
-                    sec_per_batch = float(duration / FLAGS.log_frequency)
-
-                    # Display results
-                    format_str = ('%s: step %d, loss = %.2f, accuracy = %.2f, IOU = %.2f '
-                                  '(%.1f examples/sec; %.3f sec/batch)')
-                    print(format_str % (datetime.now(), self._step, loss_value,
-                                        accuracy_value, mean_iou_value,
-                                        examples_per_sec, sec_per_batch))
-
         # Run training session
         max_steps = int(FLAGS.num_epochs * num_batches_per_epoch)
 
@@ -130,7 +141,7 @@ def train():
 
         hooks =[tf.train.StopAtStepHook(last_step=max_steps),
                 tf.train.NanTensorHook(xentropy_loss),
-                _LoggerHook()]
+                _LoggerHook(xentropy_loss, accuracy, mean_iou, lr, num_batches_per_epoch)]
 
         with tf.train.MonitoredTrainingSession(
             checkpoint_dir=FLAGS.train_dir,

@@ -8,7 +8,7 @@ class VGG:
     VGG class used to load VGG16 and VGG19 architectures from paper:
     https://arxiv.org/pdf/1409.1556.pdf
 
-    Pretrained weights are loaded from Numpy (npy) files.
+    Pre-trained weights are loaded from Numpy (npy) files.
     Numpy files have been downloaded from:
     https://github.com/machrisaa/tensorflow-vgg
     """
