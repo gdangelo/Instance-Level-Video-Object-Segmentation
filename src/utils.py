@@ -3,7 +3,7 @@ import glob
 import shutil
 import tensorflow as tf
 
-def clean_path(path):
+def create_path_dir(path, clean=False):
     """
     Delete directory tree from path and (re-)create it.
     :param path: Path to clean and (re-)create
@@ -11,11 +11,15 @@ def clean_path(path):
     """
 
     dir = os.path.dirname(path)
+    dir_exists = os.path.exists(dir)
+
     # Clean path diretories if exist
-    if os.path.exists(dir):
+    if clean and dir_exists:
         shutil.rmtree(dir)
-    # Create path directories
-    os.makedirs(dir)
+    
+    # Create path directories if does not exist
+    if not dir_exists:
+        os.makedirs(dir)
 
 def get_inputs(images_path, gt_images_path, height, width, batch_size):
     """

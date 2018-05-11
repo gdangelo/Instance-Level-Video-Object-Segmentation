@@ -37,6 +37,7 @@ tf.flags.DEFINE_float('num_epochs_per_decay', 50, "Epochs after which learning r
 tf.flags.DEFINE_integer('num_epochs', 250, "Number of epochs to run.")
 tf.flags.DEFINE_float('momentum', 0.9, "Momentum for SGD Optimizer.")
 tf.flags.DEFINE_float('beta', 0.01, "Beta for L2 regularization.")
+tf.flags.DEFINE_boolean('clean_train_dir', False, "Clean training directory before training the model again.")
 
 # Logging parameters
 tf.flags.DEFINE_boolean('log_device_placement', False, "Whether to log device placement.")
@@ -225,7 +226,7 @@ def main(argv=None):
     """Run main function."""
 
     # Clean and create training directory
-    utils.clean_path(FLAGS.train_dir)
+    utils.create_path_dir(FLAGS.train_dir, FLAGS.clean_train_dir)
     # Do training
     train()
 
