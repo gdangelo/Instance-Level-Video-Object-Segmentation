@@ -13,8 +13,9 @@ class FCN:
         weights = tf.Variable(tf.truncated_normal(
             shape=[1, 1, input.get_shape().as_list()[3], out_channels],
             mean=0,
-            stddev=0.1))
-        bias = tf.Variable(tf.zeros(out_channels))
+            stddev=0.1),
+            name='weights_'+str(name))
+        bias = tf.Variable(tf.zeros(out_channels), name='bias_'+str(name))
 
         # Apply convolution and add bias
         conv = tf.nn.conv2d(input, weights, [1,1,1,1], 'SAME', name=name)
@@ -43,7 +44,8 @@ class FCN:
         weights = tf.Variable(tf.truncated_normal(
             shape=[ksize, ksize, num_classes, in_features],
             mean=0,
-            stddev=0.1))
+            stddev=0.1),
+            name='weights_'+str(name))
 
         # Apply backward strided convolution
         back_conv = tf.nn.conv2d_transpose(

@@ -36,6 +36,7 @@ tf.flags.DEFINE_float('learning_rate_decay_factor', 1e-1, "Learning rate decay f
 tf.flags.DEFINE_float('num_epochs_per_decay', 50, "Epochs after which learning rate decays.")
 tf.flags.DEFINE_integer('num_epochs', 250, "Number of epochs to run.")
 tf.flags.DEFINE_float('momentum', 0.9, "Momentum for SGD Optimizer.")
+tf.flags.DEFINE_float('beta', 0.01, "Beta for L2 regularization.")
 
 # Logging parameters
 tf.flags.DEFINE_boolean('log_device_placement', False, "Whether to log device placement.")
@@ -132,7 +133,7 @@ def train():
         mean_iou, mean_iou_update = tf.metrics.mean_iou(labels, predictions, FLAGS.num_classes)
         metrics_op = tf.group(accuracy_update, mean_iou_update)
 
-        # Run training session
+        # Define config and hooks for the training session
         max_steps = int(FLAGS.num_epochs * num_batches_per_epoch)
 
         config = tf.ConfigProto()
@@ -143,6 +144,7 @@ def train():
                 tf.train.NanTensorHook(xentropy_loss),
                 _LoggerHook(xentropy_loss, accuracy, mean_iou, lr, num_batches_per_epoch)]
 
+        # Run the training session
         with tf.train.MonitoredTrainingSession(
             checkpoint_dir=FLAGS.train_dir,
             hooks=hooks,
@@ -199,7 +201,12 @@ def loss(logits, labels_ohe):
 
     # Compute the cross entropy loss function
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels_ohe)
-    return tf.reduce_mean(cross_entropy)
+    cross_entropy_loss = tf.reduce_mean(cross_entropy)
+
+    # Add L2 regularization
+    regularizers = [tf.nn.l2_loss(var) for var in tf.trainable_variables() if 'weights' in var.name]
+    return tf.reduce_mean(cross_entropy_loss + FLAGS.beta * tf.add_n(regularizers))
+
 
 def optimize(total_loss, lr, global_step):
     """
