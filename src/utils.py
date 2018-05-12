@@ -16,7 +16,7 @@ def create_path_dir(path, clean=False):
     # Clean path diretories if exist
     if clean and dir_exists:
         shutil.rmtree(dir)
-    
+
     # Create path directories if does not exist
     if not dir_exists:
         os.makedirs(dir)
@@ -52,7 +52,8 @@ def get_inputs(images_path, gt_images_path, height, width, batch_size):
     image, label = preprocess(image, gt_image, height, width)
 
     # Generate training batches
-    return generate_batches(image, label, batch_size, shuffle=True)
+    with tf.name_scope('batch'):
+        return generate_batches(image, label, batch_size, shuffle=True)
 
 def preprocess(image, gt_image, height, width):
     """

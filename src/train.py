@@ -14,7 +14,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 FLAGS = tf.flags.FLAGS
 
 # Data directories and paths
-tf.flags.DEFINE_string('train_dir', os.path.join(script_dir, '../cvpr2018_train/'), "Directory where to write event logs and checkpoint.")
+tf.flags.DEFINE_string('train_dir', os.path.join(script_dir, '../train/'), "Directory where to write event logs and checkpoint.")
 tf.flags.DEFINE_string('data_dir', os.path.join(script_dir, '../data/'), "Path to the CVPR2018 data directory.")
 tf.flags.DEFINE_string('images_path', os.path.join(FLAGS.data_dir, 'train_color', '*.jpg'), "Path to training images.")
 tf.flags.DEFINE_string('gt_images_path', os.path.join(FLAGS.data_dir, 'train_label', '*_instanceIds.png'), "Path to label images.")
@@ -33,8 +33,8 @@ tf.flags.DEFINE_integer('num_classes', 8, "Number of classes to predict.")
 tf.flags.DEFINE_integer('batch_size', 16, "Number of images to process in a batch.")
 tf.flags.DEFINE_float('initial_learning_rate', 1e-4, "Learning rate for SGD Optimizer.")
 tf.flags.DEFINE_float('learning_rate_decay_factor', 1e-1, "Learning rate decay factor.")
-tf.flags.DEFINE_float('num_epochs_per_decay', 50, "Epochs after which learning rate decays.")
-tf.flags.DEFINE_integer('num_epochs', 250, "Number of epochs to run.")
+tf.flags.DEFINE_float('num_epochs_per_decay', 25, "Epochs after which learning rate decays.")
+tf.flags.DEFINE_integer('num_epochs', 100, "Number of epochs to run.")
 tf.flags.DEFINE_float('momentum', 0.9, "Momentum for SGD Optimizer.")
 tf.flags.DEFINE_float('beta', 0.01, "Beta for L2 regularization.")
 tf.flags.DEFINE_boolean('clean_train_dir', False, "Clean training directory before training the model again.")
@@ -42,6 +42,7 @@ tf.flags.DEFINE_boolean('clean_train_dir', False, "Clean training directory befo
 # Logging parameters
 tf.flags.DEFINE_boolean('log_device_placement', False, "Whether to log device placement.")
 tf.flags.DEFINE_integer('log_frequency', 10, "How often to log results to the console.")
+tf.flags.DEFINE_string('log_dir', os.path.join(script_dir, '../log/'), "Directory where to write logs data to visualize with Tensorboard.")
 
 class _LoggerHook(tf.train.SessionRunHook):
     """
@@ -117,21 +118,26 @@ def train():
         logits, probabilities = load_fcn(images)
 
         # Calculate loss
-        xentropy_loss = loss(logits, labels_ohe)
+        with tf.name_scope('xent'):
+            xentropy_loss = loss(logits, labels_ohe)
 
         # Define learning rate
         num_batches_per_epoch = math.ceil(len(glob.glob(FLAGS.images_path)) / FLAGS.batch_size)
-        lr = learning_rate(num_batches_per_epoch, global_step)
+        with tf.name_scope('learning_rate'):
+            lr = learning_rate(num_batches_per_epoch, global_step)
 
         # Build a Graph that trains the model with one batch of examples and
         # updates the model parameters
-        train_op = optimize(xentropy_loss, lr, global_step)
+        with tf.name_scope('train'):
+            train_op = optimize(xentropy_loss, lr, global_step)
 
         # Define metrics to predict
         predictions = tf.argmax(probabilities, -1)
         labels = tf.argmax(labels_ohe, -1)
-        accuracy, accuracy_update = tf.metrics.accuracy(labels, predictions)
-        mean_iou, mean_iou_update = tf.metrics.mean_iou(labels, predictions, FLAGS.num_classes)
+        with tf.name_scope('accuracy'):
+            accuracy, accuracy_update = tf.metrics.accuracy(labels, predictions)
+        with tf.name_scope('iou'):
+            mean_iou, mean_iou_update = tf.metrics.mean_iou(labels, predictions, FLAGS.num_classes)
         metrics_op = tf.group(accuracy_update, mean_iou_update)
 
         # Define config and hooks for the training session
@@ -152,6 +158,10 @@ def train():
             config=config) as mon_sess:
 
             while not mon_sess.should_stop():
+                # Visualize the Graph
+                writer = tf.summary.FileWriter(FLAGS.log_dir)
+                writer.add_graph(mon_sess.graph)
+                # Run ops
                 mon_sess.run([train_op, accuracy, mean_iou, metrics_op, lr])
 
 def load_fcn(images):
