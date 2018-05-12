@@ -49,12 +49,14 @@ class _LoggerHook(tf.train.SessionRunHook):
     TF Hook used in training session to log metrics and runtime.
     """
 
-    def __init__(self, xentropy_loss, accuracy, mean_iou, lr, num_batches_per_epoch):
+    def __init__(self, xentropy_loss, accuracy, mean_iou, lr, num_batches_per_epoch, writer, summary):
         self._xentropy_loss = xentropy_loss
         self._accuracy = accuracy
         self._mean_iou = mean_iou
         self._lr = lr
         self._num_batches_per_epoch = num_batches_per_epoch
+        self._writer = writer
+        self._summary = summary
 
     def begin(self):
         self._step = -1
@@ -64,7 +66,8 @@ class _LoggerHook(tf.train.SessionRunHook):
         self._step += 1
         # Ask for metrics values
         return tf.train.SessionRunArgs([self._xentropy_loss, self._accuracy,
-                                        self._mean_iou, self._lr])
+                                        self._mean_iou, self._lr,
+                                        self._summary])
 
     def after_run(self, run_context, run_values):
         # Display info on every new batch
@@ -98,6 +101,10 @@ class _LoggerHook(tf.train.SessionRunHook):
                                 accuracy_value, mean_iou_value,
                                 examples_per_sec, sec_per_batch))
 
+            # Save summaries to disk
+            summary = run_values.results[4]
+            self._writer.add_summary(summary, self._step)
+
 def train():
     """
     Train neural network for a number of steps.
@@ -120,11 +127,13 @@ def train():
         # Calculate loss
         with tf.name_scope('xent'):
             xentropy_loss = loss(logits, labels_ohe)
+            tf.summary.scalar('xentropy_loss', xentropy_loss)
 
         # Define learning rate
         num_batches_per_epoch = math.ceil(len(glob.glob(FLAGS.images_path)) / FLAGS.batch_size)
         with tf.name_scope('learning_rate'):
             lr = learning_rate(num_batches_per_epoch, global_step)
+            tf.summary.scalar('learning_rate', lr)
 
         # Build a Graph that trains the model with one batch of examples and
         # updates the model parameters
@@ -136,9 +145,16 @@ def train():
         labels = tf.argmax(labels_ohe, -1)
         with tf.name_scope('accuracy'):
             accuracy, accuracy_update = tf.metrics.accuracy(labels, predictions)
+            tf.summary.scalar('accuracy', accuracy)
         with tf.name_scope('iou'):
             mean_iou, mean_iou_update = tf.metrics.mean_iou(labels, predictions, FLAGS.num_classes)
+            tf.summary.scalar('iou', mean_iou)
         metrics_op = tf.group(accuracy_update, mean_iou_update)
+
+        # Merge all summaries
+        merged_summary = tf.summary.merge_all()
+        # Create writer for Tensorboard
+        writer = tf.summary.FileWriter(FLAGS.log_dir + FLAGS.model)
 
         # Define config and hooks for the training session
         max_steps = int(FLAGS.num_epochs * num_batches_per_epoch)
@@ -149,7 +165,7 @@ def train():
 
         hooks =[tf.train.StopAtStepHook(last_step=max_steps),
                 tf.train.NanTensorHook(xentropy_loss),
-                _LoggerHook(xentropy_loss, accuracy, mean_iou, lr, num_batches_per_epoch)]
+                _LoggerHook(xentropy_loss, accuracy, mean_iou, lr, num_batches_per_epoch, writer, merged_summary)]
 
         # Run the training session
         with tf.train.MonitoredTrainingSession(
@@ -159,10 +175,9 @@ def train():
 
             while not mon_sess.should_stop():
                 # Visualize the Graph
-                writer = tf.summary.FileWriter(FLAGS.log_dir)
                 writer.add_graph(mon_sess.graph)
                 # Run ops
-                mon_sess.run([train_op, accuracy, mean_iou, metrics_op, lr])
+                mon_sess.run([train_op, accuracy, mean_iou, metrics_op, lr, merged_summary])
 
 def load_fcn(images):
     """

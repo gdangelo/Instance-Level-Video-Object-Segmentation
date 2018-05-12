@@ -173,14 +173,19 @@ def generate_batches(image, label, batch_size, shuffle):
     # Create a queue that shuffles the examples, and then
     # read 'batch_size' images + labels from the example queue.
     if shuffle:
-        return tf.train.shuffle_batch(
+        images, labels = tf.train.shuffle_batch(
             [image, label],
             batch_size=batch_size,
             capacity=100,
             min_after_dequeue=50,
             allow_smaller_final_batch=True)
     else:
-        return tf.train.batch(
+        images, labels = tf.train.batch(
             [image, label],
             batch_size=batch_size,
             allow_smaller_final_batch=True)
+
+    # Display the training images in Tensorboard
+    tf.summary.image('images', images)
+
+    return images, labels
