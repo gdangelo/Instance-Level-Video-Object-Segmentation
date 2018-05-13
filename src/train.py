@@ -196,8 +196,8 @@ def load_model(images):
         print("Building FCN-8 with VGG16...")
         logits, probabilities, _ = FCN().fcn8_vgg_16(images, FLAGS.vgg16_weights, FLAGS.num_classes)
     elif FLAGS.model == 'unet':
-        print("Building U-NET...")
-        logits, probabilities = UNET().unet(images, FLAGS.num_classes)
+        print("Building U-NET with VGG16...")
+        logits, probabilities = UNET().unet(images, FLAGS.vgg16_weights, FLAGS.num_classes)
     else:
         raise ValueError('Unknown model: ' + FLAGS.model)
 

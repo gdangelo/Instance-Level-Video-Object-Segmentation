@@ -1,10 +1,17 @@
 import numpy as np
 import tensorflow as tf
+from models.vgg import VGG
 
 class UNET:
     """
     UNET class
     """
+
+    def load_vgg_16(self, features, weights):
+        # Build VGG with VGG16 pretrained weights
+        vgg = VGG(vgg16_weights_file=weights)
+        # Return VGG16 layers
+        return vgg.vgg16(features)
 
     def conv_layer(self, input, n_filters, ksize=(3,3), strides=(1,1), padding='VALID', name='conv'):
         with tf.name_scope(name):
@@ -95,30 +102,26 @@ class UNET:
         cropped = tf.image.crop_to_bounding_box(copy_input, offset_height, offset_width, target_height, target_width)
         return tf.concat([up_conv, cropped], axis=-1, name='{}_concat'.format(name))
 
-    def unet(self, features, num_classes):
+    def unet(self, features, weights, num_classes):
 
-        # --- Contracting path ---
-        block_1, pool_1 = self.conv_block(features, [64, 64], name='block_1')
-        block_2, pool_2 = self.conv_block(pool_1, [128, 128], name='block_2')
-        block_3, pool_3 = self.conv_block(pool_2, [256, 256], name='block_3')
-        block_4, pool_4 = self.conv_block(pool_3, [512, 512], name='block_4')
-        block_5 = self.conv_block(pool_4, [1024, 1024], pooling=False, name='block_5')
+        # --- Contracting path: VGG16 (pre-trained) ---
+        vgg16_layers = self.load_vgg_16(features, weights)
 
         # --- Expansive path ---
-        up_block_1 = self.up_block(block_5, pool_4, name='up_block_1')
+        up_block_1 = self.up_block(vgg16_layers['conv5_3'], vgg16_layers['conv4_3'], name='up_block_1')
         block_6 = self.conv_block(up_block_1, [512, 512], pooling=False, name='block_6')
 
-        up_block_2 = self.up_block(block_6, pool_3, name='up_block_1')
+        up_block_2 = self.up_block(block_6, vgg16_layers['conv3_3'], name='up_block_1')
         block_7 = self.conv_block(up_block_2, [256, 256], pooling=False, name='block_7')
 
-        up_block_3 = self.up_block(block_7, pool_2, name='up_block_1')
+        up_block_3 = self.up_block(block_7, vgg16_layers['conv2_2'], name='up_block_1')
         block_8 = self.conv_block(up_block_3, [128, 128], pooling=False, name='block_8')
 
-        up_block_4 = self.up_block(block_8, pool_1, name='up_block_1')
+        up_block_4 = self.up_block(block_8, vgg16_layers['conv1_2'], name='up_block_1')
         block_9 = self.conv_block(up_block_4, [64, 64], pooling=False, name='block_9')
 
         logits = self.conv_layer(block_9, num_classes, ksize=(1,1), name='unet')
         probabilities = tf.nn.softmax(logits, name='unet_logits_to_softmax')
 
-        # Return logits and probabilities for Unet
+        # Return logits and probabilities for U-Net
         return logits, probabilities
