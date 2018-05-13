@@ -8,6 +8,7 @@ import time
 import utils
 import tensorflow as tf
 from models.fcn import FCN
+from models.unet import UNET
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -34,7 +35,7 @@ tf.flags.DEFINE_integer('batch_size', 16, "Number of images to process in a batc
 tf.flags.DEFINE_float('initial_learning_rate', 1e-4, "Learning rate for SGD Optimizer.")
 tf.flags.DEFINE_float('learning_rate_decay_factor', 1e-1, "Learning rate decay factor.")
 tf.flags.DEFINE_float('num_epochs_per_decay', 25, "Epochs after which learning rate decays.")
-tf.flags.DEFINE_integer('num_epochs', 100, "Number of epochs to run.")
+tf.flags.DEFINE_integer('num_epochs', 50, "Number of epochs to run.")
 tf.flags.DEFINE_float('momentum', 0.9, "Momentum for SGD Optimizer.")
 tf.flags.DEFINE_float('beta', 0.01, "Beta for L2 regularization.")
 tf.flags.DEFINE_boolean('clean_train_dir', False, "Clean training directory before training the model again.")
@@ -95,7 +96,7 @@ class _LoggerHook(tf.train.SessionRunHook):
             sec_per_batch = float(duration / FLAGS.log_frequency)
 
             # Display results
-            format_str = ('%s: step %d, loss = %.2f, accuracy = %.2f, IOU = %.2f '
+            format_str = ('%s: step %d, loss = %.2f, accuracy = %.4f, IOU = %.4f '
                           '(%.1f examples/sec; %.3f sec/batch)')
             print(format_str % (datetime.now(), self._step, loss_value,
                                 accuracy_value, mean_iou_value,
@@ -122,7 +123,7 @@ def train():
                                       FLAGS.batch_size)
 
         # Load FCN model with pre-trained weights for VGG16
-        logits, probabilities = load_fcn(images)
+        logits, probabilities = load_model(images)
 
         # Calculate loss
         with tf.name_scope('xent'):
@@ -177,23 +178,26 @@ def train():
                 # Visualize the Graph
                 writer.add_graph(mon_sess.graph)
                 # Run ops
-                mon_sess.run([train_op, accuracy, mean_iou, metrics_op, lr, merged_summary])
+                #mon_sess.run([train_op, accuracy, mean_iou, metrics_op, lr, merged_summary])
 
-def load_fcn(images):
+def load_model(images):
     """
-    Load FCN model with pre-trained VGG16 weigths.
-    :return: Logits and probabilities from FCN output
+    Load NN model.
+    :return: Logits and probabilities from NN output
     """
 
     if FLAGS.model == 'fcn32':
-        print("Building FCN32_VGG16 model...")
+        print("Building FCN-32 with VGG16...")
         logits, probabilities, _ = FCN().fcn32_vgg_16(images, FLAGS.vgg16_weights, FLAGS.num_classes)
     elif FLAGS.model == 'fcn16':
-        print("Building FCN16_VGG16 model...")
+        print("Building FCN-16 with VGG16...")
         logits, probabilities, _ = FCN().fcn16_vgg_16(images, FLAGS.vgg16_weights, FLAGS.num_classes)
     elif FLAGS.model == 'fcn8':
-        print("Building FCN8_VGG16 model...")
+        print("Building FCN-8 with VGG16...")
         logits, probabilities, _ = FCN().fcn8_vgg_16(images, FLAGS.vgg16_weights, FLAGS.num_classes)
+    elif FLAGS.model == 'unet':
+        print("Building U-NET...")
+        logits, probabilities = UNET().unet(images, FLAGS.num_classes)
     else:
         raise ValueError('Unknown model: ' + FLAGS.model)
 
@@ -232,7 +236,6 @@ def loss(logits, labels_ohe):
     # Add L2 regularization
     regularizers = [tf.nn.l2_loss(var) for var in tf.trainable_variables() if 'weights' in var.name]
     return tf.reduce_mean(cross_entropy_loss + FLAGS.beta * tf.add_n(regularizers))
-
 
 def optimize(total_loss, lr, global_step):
     """
