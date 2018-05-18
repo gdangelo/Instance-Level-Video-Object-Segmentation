@@ -64,7 +64,7 @@ def preprocess(image, gt_image, height, width):
     :param width: Image width.
     :result:
         - image: Image. 3D tensor of [new_height, new_width, 3] size.
-        - label: Label. 3D tensor of [new_height, new_width, num_classes+1] size.
+        - label: Label. 3D tensor of [new_height, new_width, num_classes] size.
     """
 
     # Convert the image dtypes to tf.float32 if needed
@@ -75,8 +75,7 @@ def preprocess(image, gt_image, height, width):
     if gt_image.dtype != tf.int32:
         gt_image = tf.image.convert_image_dtype(gt_image, dtype=tf.int32)
 
-    '''
-    # Compute number of pixels needed to pad images
+    '''# Compute number of pixels needed to pad images
     # in order to respect FCN factor requirement
     top, bottom, left, right = get_paddings(height, width, 32)
     new_height = height + top + bottom
@@ -86,6 +85,9 @@ def preprocess(image, gt_image, height, width):
     image = tf.image.resize_image_with_crop_or_pad(image, new_height, new_width)
     gt_image = tf.image.resize_image_with_crop_or_pad(gt_image, new_height, new_width)
     '''
+
+    # Subtract off the mean and divide by the variance of the pixels
+    image = tf.image.per_image_standardization(image)
 
     # Shape TF tensors
     image.set_shape(shape=(height, width, 3))
@@ -136,8 +138,6 @@ def one_hot_encode(gt_image):
 
     # One hot encoding of each pixel according to the CVPR2018 classes
     label_ohe = list(map(lambda x: tf.to_float(tf.equal(gt_image // 1000, x)), cvpr2018_labels()))
-    # Add the instance ID
-    #labels.append(tf.to_float(gt_image % 1000))
     # Stack everything together
     return tf.stack(label_ohe, axis=-1)
 
@@ -156,6 +156,18 @@ def cvpr2018_labels():
         38: 'truck',
         39: 'bus',
         40: 'tricycle'
+    }
+
+def lyft_labels():
+    """
+    Build dictionnary with labels id/name to predict.
+    :return: Dictionnary with label id - label name
+    """
+
+    return {
+        0: 'None',
+        7: 'Roads',
+        10: 'Vehicles'
     }
 
 def generate_batches(image, label, batch_size, shuffle):
