@@ -45,6 +45,9 @@ tf.flags.DEFINE_boolean('log_device_placement', False, "Whether to log device pl
 tf.flags.DEFINE_integer('log_frequency', 10, "How often to log results to the console.")
 tf.flags.DEFINE_string('log_dir', os.path.join(script_dir, '../log/'), "Directory where to write logs data to visualize with Tensorboard.")
 
+# Misc
+tf.flags.DEFINE_boolean('gpu_allow_growth', True, "Allocate only as much GPU memory based on runtime allocations.")
+
 class _LoggerHook(tf.train.SessionRunHook):
     """
     TF Hook used in training session to log metrics and runtime.
@@ -142,8 +145,8 @@ def train():
             train_op = optimize(xentropy_loss, lr, global_step)
 
         # Define metrics to predict
-        predictions = tf.argmax(probabilities, -1)
-        labels = tf.argmax(labels_ohe, -1)
+        predictions = tf.argmax(probabilities, -1, name='predictions')
+        labels = tf.argmax(labels_ohe, -1, name='labels')
         with tf.name_scope('accuracy'):
             accuracy, accuracy_update = tf.metrics.accuracy(labels, predictions)
             tf.summary.scalar('accuracy', accuracy)
@@ -162,7 +165,7 @@ def train():
 
         config = tf.ConfigProto()
         config.log_device_placement = FLAGS.log_device_placement
-        config.gpu_options.allow_growth = True
+        config.gpu_options.allow_growth = FLAGS.gpu_allow_growth
 
         hooks =[tf.train.StopAtStepHook(last_step=max_steps),
                 tf.train.NanTensorHook(xentropy_loss),
@@ -178,7 +181,7 @@ def train():
                 # Visualize the Graph
                 writer.add_graph(mon_sess.graph)
                 # Run ops
-                #mon_sess.run([train_op, accuracy, mean_iou, metrics_op, lr, merged_summary])
+                mon_sess.run([train_op, accuracy, mean_iou, metrics_op, lr, merged_summary])
 
 def load_model(images):
     """
